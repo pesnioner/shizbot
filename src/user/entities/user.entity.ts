@@ -1,16 +1,23 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import UserVoiceEntity from './user-voice';
 
 @Entity({ name: 'users' })
 export default class UserEntity {
     @PrimaryGeneratedColumn({ name: 'id' })
     id: number;
 
-    @Column({ name: 'telegram_id' })
+    @Column({ name: 'tg_id' })
     tgId: number;
 
-    @Column({ name: 'first_name' })
-    firstName: string;
+    @Column({ name: 'tg_first_name' })
+    tgFirstName: string;
 
-    @Column({ name: 'last_name' })
-    lastName: string;
+    @Column({ name: 'tg_username' })
+    tgUsername: string;
+
+    @Column({ name: 'internal_alias' })
+    internalAlias: string;
+
+    @OneToMany(() => UserVoiceEntity, (_: UserVoiceEntity) => _.user)
+    voices: UserVoiceEntity[];
 }

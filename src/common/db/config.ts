@@ -1,6 +1,8 @@
 import * as path from 'path';
 import { DataSourceOptions } from 'typeorm';
 import envUtil from '../utils/env.util';
+import UserEntity from '../../user/entities/user.entity';
+import UserVoiceEntity from '../../user/entities/user-voice';
 
 export default class DataSourceOptionsGenerator {
     private _options: DataSourceOptions;
@@ -16,7 +18,7 @@ export default class DataSourceOptionsGenerator {
             migrationsRun: true,
             migrationsTableName: 'migrations',
             migrations: [path.resolve(__dirname, 'migrations', '*.{ts,js}')],
-            // entities: [UserEntity, WeightEntity],
+            entities: [UserEntity, UserVoiceEntity],
             logging: 'all',
             synchronize: false,
         };
