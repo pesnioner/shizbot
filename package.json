@@ -4,6 +4,8 @@
     "description": "",
     "main": "index.js",
     "scripts": {
+        "build": "tsc",
+        "start": "node dist/bot.js",
         "debug": "nodemon src/bot.ts"
     },
     "keywords": [],
