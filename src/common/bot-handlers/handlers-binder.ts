@@ -62,6 +62,9 @@ export default class BotHandlersBinder {
                 ctx.chat.type === 'private',
                 user,
             );
+            if (!user.chats) {
+                user.chats = [];
+            }
             user.chats.push(chat);
         }
         return user;
