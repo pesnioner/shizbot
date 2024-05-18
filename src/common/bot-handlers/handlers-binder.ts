@@ -151,6 +151,11 @@ export default class BotHandlersBinder {
         const handler = this.COMMANDS.get(ctx.message.text as BotCommandsEnum)?.bind(this);
         if (handler) {
             await handler(ctx, user);
+        } else {
+            const groupHandler = this.COMMANDS.get(ctx.message.text.split('@')[0] as BotCommandsEnum)?.bind(this);
+            if (groupHandler) {
+                await groupHandler(ctx, user);
+            }
         }
     }
 
