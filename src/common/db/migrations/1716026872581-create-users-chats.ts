@@ -11,7 +11,7 @@ export class CreateUsersChats1716026872581 implements MigrationInterface {
                     { name: 'is_private', type: 'boolean', isNullable: false },
                     { name: 'title', type: 'varchar', isNullable: true },
                     { name: 'user_id', type: 'int', isNullable: false },
-                    { name: 'messages_count', type: 'int', isNullable: false, default: 1 },
+                    { name: 'messages_count', type: 'bigint', isNullable: false, default: 1 },
                 ],
             }),
         );

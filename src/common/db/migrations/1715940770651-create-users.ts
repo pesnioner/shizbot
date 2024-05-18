@@ -7,7 +7,7 @@ export class CreateUsers1715940770651 implements MigrationInterface {
                 name: 'users',
                 columns: [
                     { name: 'id', type: 'int', isPrimary: true, isGenerated: true, generationStrategy: 'increment' },
-                    { name: 'tg_id', type: 'int', isUnique: true, isNullable: false },
+                    { name: 'tg_id', type: 'bigint', isUnique: true, isNullable: false },
                     { name: 'tg_first_name', type: 'varchar', isNullable: true },
                     { name: 'tg_username', type: 'varchar', isNullable: true },
                     { name: 'internal_alias', type: 'varchar', isNullable: true },
