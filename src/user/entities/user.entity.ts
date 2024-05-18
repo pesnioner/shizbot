@@ -1,5 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import UserVoiceEntity from './user-voice';
+import UserChatEntity from './user-chat';
 
 @Entity({ name: 'users' })
 export default class UserEntity {
@@ -20,4 +21,7 @@ export default class UserEntity {
 
     @OneToMany(() => UserVoiceEntity, (_: UserVoiceEntity) => _.user)
     voices: UserVoiceEntity[];
+
+    @OneToMany(() => UserChatEntity, (_: UserChatEntity) => _.user)
+    chats: UserChatEntity[];
 }

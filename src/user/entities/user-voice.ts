@@ -1,5 +1,6 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import UserEntity from './user.entity';
+import UserChatEntity from './user-chat';
 
 @Entity({ name: 'users_voices' })
 export default class UserVoiceEntity {
@@ -21,9 +22,18 @@ export default class UserVoiceEntity {
     @Column({ name: 'user_id' })
     userId: number;
 
-    // todo add createdAt
+    @Column({ name: 'chat_id' })
+    chatId: number;
 
+    @CreateDateColumn({ name: 'created_at' })
+    createdAt: Date;
+
+    // todo add createdAt
     @ManyToOne(() => UserEntity)
     @JoinColumn({ name: 'user_id' })
     user: UserEntity;
+
+    @ManyToOne(() => UserChatEntity)
+    @JoinColumn({ name: 'chat_id' })
+    chat: UserChatEntity;
 }
