@@ -7,7 +7,7 @@ export class CreateUsersChats1716026872581 implements MigrationInterface {
                 name: 'users_chats',
                 columns: [
                     { name: 'id', type: 'int', isPrimary: true, isGenerated: true, generationStrategy: 'increment' },
-                    { name: 'chat_id', type: 'int', isNullable: false },
+                    { name: 'chat_id', type: 'int8', isNullable: false },
                     { name: 'is_private', type: 'boolean', isNullable: false },
                     { name: 'title', type: 'varchar', isNullable: true },
                     { name: 'user_id', type: 'int', isNullable: false },
