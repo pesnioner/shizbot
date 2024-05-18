@@ -204,7 +204,7 @@ export default class BotHandlersBinder {
                     return acc;
                 }
                 const length = top.get(user.id);
-                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length || 0} секунд`;
+                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length || 0} секунд\n`;
             }, message),
         );
     }
@@ -230,7 +230,7 @@ export default class BotHandlersBinder {
                     return acc;
                 }
                 const length = topTotal.get(user.id);
-                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length || 0} секунд`;
+                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length || 0} секунд\n`;
             }, message),
         );
     }
