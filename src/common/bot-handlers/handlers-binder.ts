@@ -74,8 +74,8 @@ export default class BotHandlersBinder {
         if (!ctx.message || !ctx.message.photo) {
             return;
         }
-        const index = Math.floor(Math.random() * (photoReactions.length + 1));
-        ctx.reply(photoReactions[index - 1]);
+        const index = Math.floor(Math.random() * photoReactions.length);
+        ctx.reply(photoReactions[index], { reply_parameters: { message_id: ctx.message.message_id } });
     }
 
     async handlerPhrases(ctx: Context) {
@@ -83,7 +83,7 @@ export default class BotHandlersBinder {
             return;
         }
         if (ctx.message.text && /темка/gi.test(ctx.message.text)) {
-            this._bot.api.sendMessage(ctx.chat.id, 'Куда ты лезешь, оно тебя сожрет');
+            ctx.reply('Куда ты лезешь, оно тебя сожрет', { reply_parameters: { message_id: ctx.message.message_id } });
         }
 
         if (ctx.message.text && /токсик/gi.test(ctx.message.text)) {
@@ -138,9 +138,9 @@ export default class BotHandlersBinder {
             }
         }
 
-        this._bot.api.sendMessage(
-            ctx.chat.id,
+        ctx.reply(
             `Ваше общее количество голосовых сообщений: ${totalVoices}\n\nВы ${voicesAlias}\n\nСегодня вы отправили ${todaysVoices}, это ${Math.round((todaysVoices / totalVoices) * 100)}% от общего числа`,
+            { reply_parameters: { message_id: ctx.message.message_id } },
         );
     }
 
@@ -160,7 +160,7 @@ export default class BotHandlersBinder {
     }
 
     async getOwnVoicesLength(ctx: Context, user: UserEntity) {
-        if (!ctx.chat) {
+        if (!ctx.chat || !ctx.message) {
             return;
         }
         const now = new Date();
@@ -172,7 +172,9 @@ export default class BotHandlersBinder {
         const totalVoicesLength = await this.userVoiceService.getUsersVoicesLength(user, ctx.chat.id);
         const todaysVoicesLength = await this.userVoiceService.getUsersVoicesLength(user, ctx.chat.id, { start, end });
         const message = `Общее время голосовых сообщений: ${totalVoicesLength} секунд\nВремя голосовых сообщений за сегодня: ${todaysVoicesLength} секнуд`;
-        this._bot.api.sendMessage(ctx.chat.id, todaysVoicesLength < 600 ? message : `${message}`);
+        ctx.reply(todaysVoicesLength < 600 ? message : `${message}`, {
+            reply_parameters: { message_id: ctx.message.message_id },
+        });
     }
 
     async getTopVoicesLengthToday(ctx: Context, user: UserEntity) {
@@ -234,12 +236,12 @@ export default class BotHandlersBinder {
     }
 
     async getUserMessagesCount(ctx: Context, user: UserEntity) {
-        if (!ctx.chat) {
+        if (!ctx.chat || !ctx.message) {
             return;
         }
         const chat = await this.userChatService.getCountByChat(user, ctx.chat.id);
         if (chat) {
-            this._bot.api.sendMessage(ctx.chat.id, chat.messagesCount.toString());
+            ctx.reply(chat.messagesCount.toString(), { reply_parameters: { message_id: ctx.message?.message_id } });
         }
     }
 }
