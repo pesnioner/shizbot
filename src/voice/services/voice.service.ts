@@ -1,9 +1,9 @@
 import { Repository } from 'typeorm';
-import UserVoiceEntity from '../entities/user-voice';
-import UserEntity from '../entities/user.entity';
+import UserEntity from '../../user/entities/user.entity';
+import VoiceEntity from '../entities/user-voice.entity';
 
-export default class UserVoiceService {
-    constructor(private readonly userVoiceService: Repository<UserVoiceEntity>) {}
+export default class VoiceService {
+    constructor(private readonly userVoiceService: Repository<VoiceEntity>) {}
 
     create(
         duration: number,
@@ -12,7 +12,7 @@ export default class UserVoiceService {
         fileSize: number | undefined,
         user: UserEntity,
         chatId: number,
-    ): Promise<UserVoiceEntity> {
+    ): Promise<VoiceEntity> {
         return this.userVoiceService.save(
             this.userVoiceService.create({ duration, fileId, fileUniqueId, fileSize, userId: user.id, chatId }),
         );

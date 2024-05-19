@@ -1,6 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import UserVoiceEntity from './user-voice';
-import UserChatEntity from './user-chat';
+import ChatEntity from '../../chat/entities/chat.entity';
+import VoiceEntity from '../../voice/entities/user-voice.entity';
 
 @Entity({ name: 'users' })
 export default class UserEntity {
@@ -19,9 +19,9 @@ export default class UserEntity {
     @Column({ name: 'internal_alias' })
     internalAlias: string;
 
-    @OneToMany(() => UserVoiceEntity, (_: UserVoiceEntity) => _.user)
-    voices: UserVoiceEntity[];
+    @OneToMany(() => VoiceEntity, (_: VoiceEntity) => _.user)
+    voices: VoiceEntity[];
 
-    @OneToMany(() => UserChatEntity, (_: UserChatEntity) => _.user)
-    chats: UserChatEntity[];
+    @OneToMany(() => ChatEntity, (_: ChatEntity) => _.user)
+    chats: ChatEntity[];
 }

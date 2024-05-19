@@ -1,9 +1,10 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import UserEntity from './user.entity';
-import UserVoiceEntity from './user-voice';
+import UserEntity from '../../user/entities/user.entity';
+import VoiceEntity from '../../voice/entities/user-voice.entity';
+import MessageEntity from '../../message/entities/message.entity';
 
 @Entity({ name: 'users_chats' })
-export default class UserChatEntity {
+export default class ChatEntity {
     @PrimaryGeneratedColumn({ name: 'id' })
     id: number;
 
@@ -26,6 +27,9 @@ export default class UserChatEntity {
     @JoinColumn({ name: 'user_id' })
     user: UserEntity;
 
-    @OneToMany(() => UserVoiceEntity, (_: UserVoiceEntity) => _.chat)
-    voices: UserVoiceEntity[];
+    @OneToMany(() => VoiceEntity, (_: VoiceEntity) => _.chat)
+    voices: VoiceEntity[];
+
+    @OneToMany(() => MessageEntity, (_: MessageEntity) => _.chat)
+    messages: MessageEntity[];
 }

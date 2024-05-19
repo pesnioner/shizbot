@@ -1,9 +1,9 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import UserEntity from './user.entity';
-import UserChatEntity from './user-chat';
+import UserEntity from '../../user/entities/user.entity';
+import ChatEntity from '../../chat/entities/chat.entity';
 
 @Entity({ name: 'users_voices' })
-export default class UserVoiceEntity {
+export default class VoiceEntity {
     @PrimaryGeneratedColumn({ name: 'id' })
     id: number;
 
@@ -28,12 +28,11 @@ export default class UserVoiceEntity {
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 
-    // todo add createdAt
     @ManyToOne(() => UserEntity)
     @JoinColumn({ name: 'user_id' })
     user: UserEntity;
 
-    @ManyToOne(() => UserChatEntity)
+    @ManyToOne(() => ChatEntity)
     @JoinColumn({ name: 'chat_id' })
-    chat: UserChatEntity;
+    chat: ChatEntity;
 }

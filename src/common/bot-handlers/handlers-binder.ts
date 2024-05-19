@@ -2,13 +2,15 @@ import { Bot, Context } from 'grammy';
 import UserService from '../../user/services/user.service';
 import Db from '../db/db';
 import UserEntity from '../../user/entities/user.entity';
-import UserVoiceService from '../../user/services/user-voice.service';
-import UserVoiceEntity from '../../user/entities/user-voice';
 import { BotCommandsEnum } from '../enum/bot-commands.enum';
-import UserChatService from '../../user/services/user-chat.service';
-import UserChatEntity from '../../user/entities/user-chat';
 import { VoiceSenderAliasByCount } from '../enum/voice-sender-alias-by-count.enum';
 import { photoReactions } from '../list/photo-reactions.list';
+import VoiceService from '../../voice/services/voice.service';
+import ChatService from '../../chat/services/chat.service';
+import VoiceEntity from '../../voice/entities/user-voice.entity';
+import ChatEntity from '../../chat/entities/chat.entity';
+import MessageService from '../../message/services/message.service';
+import MessageEntity from '../../message/entities/message.entity';
 
 export default class BotHandlersBinder {
     private COMMANDS: Map<BotCommandsEnum, (ctx: Context, user: UserEntity) => Promise<void>> = new Map([
@@ -19,14 +21,16 @@ export default class BotHandlersBinder {
     ]);
 
     private userService: UserService;
-    private userVoiceService: UserVoiceService;
-    private userChatService: UserChatService;
+    private voiceService: VoiceService;
+    private chatService: ChatService;
+    private messageService: MessageService;
 
     constructor(private readonly _bot: Bot) {
         const ds = Db.getDataSource();
         this.userService = new UserService(ds.getRepository(UserEntity));
-        this.userVoiceService = new UserVoiceService(ds.getRepository(UserVoiceEntity));
-        this.userChatService = new UserChatService(ds.getRepository(UserChatEntity));
+        this.voiceService = new VoiceService(ds.getRepository(VoiceEntity));
+        this.chatService = new ChatService(ds.getRepository(ChatEntity));
+        this.messageService = new MessageService(ds.getRepository(MessageEntity));
     }
 
     async bind() {
@@ -39,7 +43,7 @@ export default class BotHandlersBinder {
             await this.handlePhoto(ctx);
             await this.handleVoice(ctx, user);
             await this.handleCommands(ctx, user);
-            await this.userChatService.increaseMessagesCount(user, ctx.chat.id);
+            await this.addMessageIntoDb(ctx, user);
             console.log('Message\n', JSON.stringify(ctx));
         });
     }
@@ -56,12 +60,7 @@ export default class BotHandlersBinder {
             user = await this.userService.createFromTgProfile(ctx.from.id, ctx.from.first_name, ctx.from.username);
         }
         if (!user.chats || !user.chats.find((chat) => chat.chatId === ctx.chat?.id)) {
-            const chat = await this.userChatService.create(
-                ctx.chat.id,
-                ctx.chat.title,
-                ctx.chat.type === 'private',
-                user,
-            );
+            const chat = await this.chatService.create(ctx.chat.id, ctx.chat.title, ctx.chat.type === 'private', user);
             if (!user.chats) {
                 user.chats = [];
             }
@@ -119,15 +118,15 @@ export default class BotHandlersBinder {
             return;
         }
 
-        await this.userVoiceService.create(duration, fileId, fileUniqueId, fileSize, user, chatId);
-        const totalVoices = await this.userVoiceService.getUserVoicesCount(user, ctx.chat.id);
+        await this.voiceService.create(duration, fileId, fileUniqueId, fileSize, user, chatId);
+        const totalVoices = await this.voiceService.getUserVoicesCount(user, ctx.chat.id);
         const now = new Date();
         const start = new Date(`${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`);
         const end = new Date(start);
         end.setHours(23);
         end.setMinutes(59);
         end.setSeconds(59);
-        const todaysVoices = await this.userVoiceService.getUserVoicesCount(user, ctx.chat.id, { start, end });
+        const todaysVoices = await this.voiceService.getUserVoicesCount(user, ctx.chat.id, { start, end });
 
         let voicesAlias = null;
 
@@ -169,8 +168,8 @@ export default class BotHandlersBinder {
         end.setHours(23);
         end.setMinutes(59);
         end.setSeconds(59);
-        const totalVoicesLength = await this.userVoiceService.getUsersVoicesLength(user, ctx.chat.id);
-        const todaysVoicesLength = await this.userVoiceService.getUsersVoicesLength(user, ctx.chat.id, { start, end });
+        const totalVoicesLength = await this.voiceService.getUsersVoicesLength(user, ctx.chat.id);
+        const todaysVoicesLength = await this.voiceService.getUsersVoicesLength(user, ctx.chat.id, { start, end });
         const message = `Общее время голосовых сообщений: ${totalVoicesLength} секунд\nВремя голосовых сообщений за сегодня: ${todaysVoicesLength} секнуд`;
         ctx.reply(todaysVoicesLength < 600 ? message : `${message}`, {
             reply_parameters: { message_id: ctx.message.message_id },
@@ -187,7 +186,7 @@ export default class BotHandlersBinder {
         end.setHours(23);
         end.setMinutes(59);
         end.setSeconds(59);
-        const top = await this.userVoiceService.getTopVoicesLengthByChat(ctx.chat.id, { start, end });
+        const top = await this.voiceService.getTopVoicesLengthByChat(ctx.chat.id, { start, end });
         if (top.size === 0) {
             this._bot.api.sendMessage(ctx.chat.id, 'Еще нет ни одного зарегистрированного голосовного сообщения');
         }
@@ -213,7 +212,7 @@ export default class BotHandlersBinder {
         if (!ctx.chat) {
             return;
         }
-        const topTotal = await this.userVoiceService.getTopVoicesLengthByChat(ctx.chat.id);
+        const topTotal = await this.voiceService.getTopVoicesLengthByChat(ctx.chat.id);
         if (topTotal.size === 0) {
             this._bot.api.sendMessage(ctx.chat.id, 'Еще нет ни одного зарегистрированного голосовного сообщения');
         }
@@ -239,9 +238,37 @@ export default class BotHandlersBinder {
         if (!ctx.chat || !ctx.message) {
             return;
         }
-        const chat = await this.userChatService.getCountByChat(user, ctx.chat.id);
-        if (chat) {
-            ctx.reply(chat.messagesCount.toString(), { reply_parameters: { message_id: ctx.message?.message_id } });
+        let chat = user.chats.find((_chat) => _chat.chatId === ctx.chat?.id);
+        if (!chat) {
+            const isChatExists = await this.chatService.getChatByTelegramId(ctx.chat.id);
+            if (!isChatExists) {
+                return;
+            }
+            chat = isChatExists;
         }
+        let message = await this.messageService.getMessageByChat(chat);
+        if (!message) {
+            message = await this.messageService.create(chat, new Date());
+        }
+        ctx.reply(message.messagesCount.toString(), { reply_parameters: { message_id: ctx.message?.message_id } });
+    }
+
+    async addMessageIntoDb(ctx: Context, user: UserEntity) {
+        if (!ctx.chat) {
+            return;
+        }
+        let chat = user.chats.find((_chat) => _chat.chatId === ctx.chat?.id);
+        if (!chat) {
+            const isChatExists = await this.chatService.getChatByTelegramId(ctx.chat.id);
+            if (!isChatExists) {
+                return;
+            }
+            chat = isChatExists;
+        }
+        let message = await this.messageService.getMessageByChat(chat);
+        if (!message) {
+            message = await this.messageService.create(chat, new Date());
+        }
+        await this.messageService.increaseMessageCounter(message);
     }
 }
