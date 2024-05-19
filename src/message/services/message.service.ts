@@ -20,6 +20,21 @@ export default class MessageService {
         return this.messageRepository.findOne({ where });
     }
 
+    async getTotalMessagesCountByChat(chat: ChatEntity) {
+        const stmt = await this.messageRepository
+            .createQueryBuilder('messages')
+            .select(['messages.chat_id'])
+            .addSelect('sum(messages.messagesCount) as amount')
+            .where('messages.chat_id = :chatId', { chatId: chat.id })
+            .groupBy('messages.chat_id')
+            .getRawOne();
+
+        if (!stmt) {
+            return 0;
+        }
+        return stmt.amount;
+    }
+
     async increaseMessageCounter(message: MessageEntity) {
         await this.messageRepository.update({ id: message.id }, { messagesCount: message.messagesCount + 1 });
     }

@@ -246,11 +246,13 @@ export default class BotHandlersBinder {
             }
             chat = isChatExists;
         }
-        let message = await this.messageService.getMessageByChat(chat);
-        if (!message) {
-            message = await this.messageService.create(chat, new Date());
+        let messagesToday = await this.messageService.getMessageByChat(chat, new Date());
+        if (!messagesToday) {
+            messagesToday = await this.messageService.create(chat, new Date());
         }
-        ctx.reply(message.messagesCount.toString(), { reply_parameters: { message_id: ctx.message?.message_id } });
+        const totalMessages = await this.messageService.getTotalMessagesCountByChat(chat);
+        const response = `Общее количество сообщений: ${totalMessages}\nСообщений за сегодня: ${messagesToday.messagesCount}`;
+        ctx.reply(response, { reply_parameters: { message_id: ctx.message?.message_id } });
     }
 
     async addMessageIntoDb(ctx: Context, user: UserEntity) {
