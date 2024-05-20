@@ -39,11 +39,11 @@ export default class BotHandlersBinder {
                 return;
             }
             const user = await this.handleTelegramUser(ctx);
+            await this.addMessageIntoDb(ctx, user);
             await this.handlerPhrases(ctx);
             await this.handlePhoto(ctx);
             await this.handleVoice(ctx, user);
             await this.handleCommands(ctx, user);
-            await this.addMessageIntoDb(ctx, user);
             console.log('Message\n', JSON.stringify(ctx));
         });
     }
@@ -267,7 +267,7 @@ export default class BotHandlersBinder {
             }
             chat = isChatExists;
         }
-        let message = await this.messageService.getMessageByChat(chat);
+        let message = await this.messageService.getMessageByChat(chat, new Date());
         if (!message) {
             message = await this.messageService.create(chat, new Date());
         }
