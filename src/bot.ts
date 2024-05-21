@@ -9,7 +9,28 @@ dotenv.config();
 
 const bot = new Bot(envUtil.extractString('BOT_TOKEN'));
 
-bot.api.setMyCommands(Object.values(BotCommandsEnum).map((command) => ({ command, description: 'Не придумал' })));
+bot.api.setMyCommands([
+    {
+        command: BotCommandsEnum.COUNT_MESSAGES,
+        description: 'Количество отправленных сообщений за все время и за сегодня',
+    },
+    {
+        command: BotCommandsEnum.OWN_VOICES_LENGTH,
+        description: 'Длительность голосовых сообщений в секундах за сегодня и все время',
+    },
+    {
+        command: BotCommandsEnum.TOP_MESSAGES,
+        description: 'Список пользователей с наибольшим количеством отправленных сообщений',
+    },
+    {
+        command: BotCommandsEnum.TOP_VOICES,
+        description: 'Список пользователей с самой большой общей длительностью голосовых сообщений за все время',
+    },
+    {
+        command: BotCommandsEnum.TOP_VOICES_TODAY,
+        description: 'Список пользователей с самой большой общей длительностью голосовых сообщений за сегодня',
+    },
+]);
 
 const ds = Db.getDataSource();
 ds.initialize()

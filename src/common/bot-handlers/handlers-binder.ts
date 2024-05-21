@@ -18,6 +18,7 @@ export default class BotHandlersBinder {
         [BotCommandsEnum.TOP_VOICES, this.getTopVoicesLength],
         [BotCommandsEnum.TOP_VOICES_TODAY, this.getTopVoicesLengthToday],
         [BotCommandsEnum.COUNT_MESSAGES, this.getUserMessagesCount],
+        [BotCommandsEnum.TOP_MESSAGES, this.countMessagesByChat],
     ]);
 
     private userService: UserService;
@@ -272,5 +273,25 @@ export default class BotHandlersBinder {
             message = await this.messageService.create(chat, new Date());
         }
         await this.messageService.increaseMessageCounter(message);
+    }
+
+    async countMessagesByChat(ctx: Context, user: UserEntity) {
+        if (!ctx.chat) {
+            return;
+        }
+        const top = await this.messageService.countMessagesByTgChat(ctx.chat.id);
+        if (top) {
+            this._bot.api.sendMessage(ctx.chat.id, top.toString());
+        }
+        const message = `Топ спамеров:\n`;
+        this._bot.api.sendMessage(
+            ctx.chat.id,
+            top.reduce((acc, curr) => {
+                if (!curr) {
+                    return acc;
+                }
+                return `${acc}@${curr.username} aka ${curr.firstName} - ${curr.amount || 0} сообщений\n`;
+            }, message),
+        );
     }
 }

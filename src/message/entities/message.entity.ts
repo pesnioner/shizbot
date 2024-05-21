@@ -17,5 +17,5 @@ export default class MessageEntity {
 
     @ManyToOne(() => ChatEntity)
     @JoinColumn({ name: 'chat_id' })
-    chat: ChatEntity[];
+    chat: ChatEntity;
 }
