@@ -280,9 +280,6 @@ export default class BotHandlersBinder {
             return;
         }
         const top = await this.messageService.countMessagesByTgChat(ctx.chat.id);
-        if (top) {
-            this._bot.api.sendMessage(ctx.chat.id, top.toString());
-        }
         const message = `Топ спамеров:\n`;
         this._bot.api.sendMessage(
             ctx.chat.id,
