@@ -11,6 +11,7 @@ import VoiceEntity from '../../voice/entities/user-voice.entity';
 import ChatEntity from '../../chat/entities/chat.entity';
 import MessageService from '../../message/services/message.service';
 import MessageEntity from '../../message/entities/message.entity';
+import datetimeUtil from '../utils/datetime.util';
 
 export default class BotHandlersBinder {
     private COMMANDS: Map<BotCommandsEnum, (ctx: Context, user: UserEntity) => Promise<void>> = new Map([
@@ -169,10 +170,20 @@ export default class BotHandlersBinder {
         end.setHours(23);
         end.setMinutes(59);
         end.setSeconds(59);
-        const totalVoicesLength = await this.voiceService.getUsersVoicesLength(user, ctx.chat.id);
-        const todaysVoicesLength = await this.voiceService.getUsersVoicesLength(user, ctx.chat.id, { start, end });
-        const message = `Общее время голосовых сообщений: ${totalVoicesLength} секунд\nВремя голосовых сообщений за сегодня: ${todaysVoicesLength} секнуд`;
-        ctx.reply(todaysVoicesLength < 600 ? message : `${message}`, {
+
+        const totalUserVoicesLength = await this.voiceService.getUsersVoicesLength(user, ctx.chat.id);
+        const todayUserVoicesLength = await this.voiceService.getUsersVoicesLength(user, ctx.chat.id, { start, end });
+
+        const totalChatVoicesLength = await this.voiceService.getChatTotalVoicesDuration(ctx.chat.id);
+
+        const totalDurationMessage = `Общеем время голосовых сообщений: ${datetimeUtil.parseSecondsIntoTimeString(totalUserVoicesLength)}`;
+        const todayDurationMessage = `Длительность голосовых сообщений за сегодня: ${todayUserVoicesLength}`;
+
+        const partOfTotal = `Процент всех гс от общей длительности по чату: ${Math.round((totalUserVoicesLength / totalChatVoicesLength) * 100)}`;
+
+        const message = `${totalDurationMessage}\n${todayDurationMessage}\n\n${totalChatVoicesLength ? partOfTotal : ''}`;
+
+        ctx.reply(message, {
             reply_parameters: { message_id: ctx.message.message_id },
         });
     }
@@ -204,7 +215,7 @@ export default class BotHandlersBinder {
                     return acc;
                 }
                 const length = top.get(user.id);
-                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length || 0} секунд\n`;
+                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length ? datetimeUtil.parseSecondsIntoTimeString(length) : 0}\n`;
             }, message),
         );
     }
@@ -230,7 +241,7 @@ export default class BotHandlersBinder {
                     return acc;
                 }
                 const length = topTotal.get(user.id);
-                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length || 0} секунд\n`;
+                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length ? datetimeUtil.parseSecondsIntoTimeString(length) : 0}\n`;
             }, message),
         );
     }

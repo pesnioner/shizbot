@@ -1,6 +1,7 @@
 import { Repository } from 'typeorm';
 import UserEntity from '../../user/entities/user.entity';
 import VoiceEntity from '../entities/user-voice.entity';
+import ChatEntity from '../../chat/entities/chat.entity';
 
 export default class VoiceService {
     constructor(private readonly userVoiceService: Repository<VoiceEntity>) {}
@@ -85,5 +86,25 @@ export default class VoiceService {
             return 0;
         }
         return stmt.cnt;
+    }
+
+    async getChatTotalVoicesDuration(tgChatId: number, timeFrame?: { start: Date; end: Date }) {
+        const builder = await this.userVoiceService
+            .createQueryBuilder('voices')
+            .select(['voices.chatId'])
+            .addSelect('sum(voices.duration) as length')
+            .leftJoin('voices.chat', 'chats')
+            .where('chats.chatId = :chatId', { chatId: tgChatId })
+            .groupBy('voices.chatId');
+
+        if (timeFrame) {
+            builder.andWhere('voices.createdAt between :start and :end', { ...timeFrame });
+        }
+
+        const stmt = await builder.getRawOne();
+        if (!stmt) {
+            return 0;
+        }
+        return stmt.length;
     }
 }
