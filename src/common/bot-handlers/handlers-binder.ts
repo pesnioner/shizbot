@@ -312,7 +312,7 @@ export default class BotHandlersBinder {
     }
 
     async generateRandomSentence(ctx: Context) {
-        const GENERATION_CHANCE = 100;
+        const GENERATION_CHANCE = 10;
         if (!ctx.message || !ctx.message.text) {
             return;
         }
