@@ -94,4 +94,12 @@ export default class PhraseService {
         }
         return sentence.join(' ').trim();
     }
+
+    async getRandomSentence() {
+        const initialWord = await this.client.RANDOMKEY();
+        if (initialWord) {
+            return this.generateSentence(initialWord);
+        }
+        return null;
+    }
 }

@@ -98,6 +98,13 @@ export default class BotHandlersBinder {
         if (ctx.message.text && /токсик/gi.test(ctx.message.text)) {
             this._bot.api.sendMessage(ctx.chat.id, `/voteban @${ctx.from?.username}`);
         }
+
+        if (ctx.message.text && /шиз голос/gi.test(ctx.message.text)) {
+            const response = await this.phraseService.getRandomSentence();
+            if (response) {
+                await ctx.reply(response, { reply_parameters: { message_id: ctx.message.message_id } });
+            }
+        }
     }
 
     async handleVoice(ctx: Context, user: UserEntity) {
