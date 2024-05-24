@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import Db from './common/db/db';
 import BotHandlersBinder from './common/bot-handlers/handlers-binder';
 import { BotCommandsEnum } from './common/enum/bot-commands.enum';
+import Redis from './common/db/redis/redis';
 
 dotenv.config();
 
@@ -33,6 +34,10 @@ bot.api.setMyCommands([
 ]);
 
 const ds = Db.getDataSource();
+const redisCLient = Redis.getRedisConnection();
 ds.initialize()
-    .then(() => new BotHandlersBinder(bot).bind())
+    .then(() => redisCLient.connect())
+    .then(() => redisCLient.ping())
+    .then((data) => console.log(data))
+    .then(() => new BotHandlersBinder(bot, redisCLient).bind())
     .then(() => bot.start());

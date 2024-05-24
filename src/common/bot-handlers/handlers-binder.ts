@@ -12,6 +12,8 @@ import ChatEntity from '../../chat/entities/chat.entity';
 import MessageService from '../../message/services/message.service';
 import MessageEntity from '../../message/entities/message.entity';
 import datetimeUtil from '../utils/datetime.util';
+import { RedisClientType } from 'redis';
+import PhraseService from '../../phrase/phrase.service';
 
 export default class BotHandlersBinder {
     private COMMANDS: Map<BotCommandsEnum, (ctx: Context, user: UserEntity) => Promise<void>> = new Map([
@@ -26,17 +28,23 @@ export default class BotHandlersBinder {
     private voiceService: VoiceService;
     private chatService: ChatService;
     private messageService: MessageService;
+    private phraseService: PhraseService;
 
-    constructor(private readonly _bot: Bot) {
+    constructor(
+        private readonly _bot: Bot,
+        private readonly redisClient: RedisClientType,
+    ) {
         const ds = Db.getDataSource();
         this.userService = new UserService(ds.getRepository(UserEntity));
         this.voiceService = new VoiceService(ds.getRepository(VoiceEntity));
         this.chatService = new ChatService(ds.getRepository(ChatEntity));
         this.messageService = new MessageService(ds.getRepository(MessageEntity));
+        this.phraseService = new PhraseService(this.redisClient);
     }
 
     async bind() {
         this._bot.on('message', async (ctx) => {
+            await this.generateRandomSentence(ctx);
             if (ctx.from.is_bot) {
                 return;
             }
@@ -301,5 +309,28 @@ export default class BotHandlersBinder {
                 return `${acc}@${curr.username} aka ${curr.firstName} - ${curr.amount || 0} сообщений\n`;
             }, message),
         );
+    }
+
+    async generateRandomSentence(ctx: Context) {
+        const GENERATION_CHANCE = 100;
+        if (!ctx.message || !ctx.message.text) {
+            return;
+        }
+        const words = await this.phraseService.handleMessage(ctx.message.text);
+        const chance = Math.floor(Math.random() * 100);
+
+        if (chance <= GENERATION_CHANCE) {
+            const initialWordIndex = Math.floor(Math.random() * (words.length - 1));
+            let sequence2Search = words[initialWordIndex];
+            if (words.length > 1) {
+                if (initialWordIndex === words.length - 1) {
+                    sequence2Search = `${words[initialWordIndex - 1]} ${sequence2Search}`;
+                } else {
+                    sequence2Search += ` ${words[initialWordIndex + 1]}`;
+                }
+            }
+            const phrase = await this.phraseService.generateSentence(sequence2Search);
+            await ctx.reply(phrase, { reply_parameters: { message_id: ctx.message.message_id } });
+        }
     }
 }
