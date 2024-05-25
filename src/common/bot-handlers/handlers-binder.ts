@@ -44,7 +44,6 @@ export default class BotHandlersBinder {
 
     async bind() {
         this._bot.on('message', async (ctx) => {
-            await this.generateRandomSentence(ctx);
             if (ctx.from.is_bot) {
                 return;
             }
@@ -54,6 +53,7 @@ export default class BotHandlersBinder {
             await this.handlePhoto(ctx);
             await this.handleVoice(ctx, user);
             await this.handleCommands(ctx, user);
+            await this.generateRandomSentence(ctx);
             console.log('Message\n', JSON.stringify(ctx));
         });
     }
@@ -99,7 +99,7 @@ export default class BotHandlersBinder {
             this._bot.api.sendMessage(ctx.chat.id, `/voteban @${ctx.from?.username}`);
         }
 
-        if (ctx.message.text && /шиз голос/gi.test(ctx.message.text)) {
+        if (ctx.message.text && /шиз/gi.test(ctx.message.text)) {
             const response = await this.phraseService.getRandomSentence();
             if (response) {
                 await ctx.reply(response, { reply_parameters: { message_id: ctx.message.message_id } });
