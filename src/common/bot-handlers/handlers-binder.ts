@@ -223,6 +223,7 @@ export default class BotHandlersBinder {
         });
         const message = `Топ воис абьюзеров за сегодня:\n`;
         const users = await Promise.all(promises);
+
         this._bot.api.sendMessage(
             ctx.chat.id,
             users.reduce((acc, user) => {
@@ -230,8 +231,9 @@ export default class BotHandlersBinder {
                     return acc;
                 }
                 const length = top.get(user.id);
-                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length ? datetimeUtil.parseSecondsIntoTimeString(length) : 0}\n`;
+                return `${acc}<a href="t.me/${user.tgUsername}">${user.tgFirstName}</a> - ${length ? datetimeUtil.parseSecondsIntoTimeString(length) : 0}\n`;
             }, message),
+            { parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
         );
     }
 
@@ -241,7 +243,8 @@ export default class BotHandlersBinder {
         }
         const topTotal = await this.voiceService.getTopVoicesLengthByChat(ctx.chat.id);
         if (topTotal.size === 0) {
-            this._bot.api.sendMessage(ctx.chat.id, 'Еще нет ни одного зарегистрированного голосовного сообщения');
+            await this._bot.api.sendMessage(ctx.chat.id, 'Еще нет ни одного зарегистрированного голосовного сообщения');
+            return;
         }
         const promises: Promise<UserEntity | null>[] = [];
         topTotal.forEach((_, key) => {
@@ -249,15 +252,17 @@ export default class BotHandlersBinder {
         });
         const message = `Топ воис абьюзеров:\n`;
         const users = await Promise.all(promises);
-        this._bot.api.sendMessage(
+
+        await this._bot.api.sendMessage(
             ctx.chat.id,
             users.reduce((acc, user) => {
                 if (!user) {
                     return acc;
                 }
                 const length = topTotal.get(user.id);
-                return `${acc}@${user.tgUsername} aka ${user.tgFirstName} - ${length ? datetimeUtil.parseSecondsIntoTimeString(length) : 0}\n`;
+                return `${acc}<a href="t.me/${user.tgUsername}">${user.tgFirstName}</a> - ${length ? datetimeUtil.parseSecondsIntoTimeString(length) : 0}\n`;
             }, message),
+            { parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
         );
     }
 
@@ -313,8 +318,9 @@ export default class BotHandlersBinder {
                 if (!curr) {
                     return acc;
                 }
-                return `${acc}@${curr.username} aka ${curr.firstName} - ${curr.amount || 0} сообщений\n`;
+                return `${acc}<a href="t.me/${curr.username}">${curr.firstName}</a> - ${curr.amount || 0} сообщений\n`;
             }, message),
+            { parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
         );
     }
 
