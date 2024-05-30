@@ -19,6 +19,9 @@ export default class UserEntity {
     @Column({ name: 'internal_alias' })
     internalAlias: string;
 
+    @Column({ name: 'is_bot' })
+    isBot: boolean;
+
     @OneToMany(() => VoiceEntity, (_: VoiceEntity) => _.user)
     voices: VoiceEntity[];
 

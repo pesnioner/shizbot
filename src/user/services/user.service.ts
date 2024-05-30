@@ -8,8 +8,8 @@ export default class UserService {
         return this.userRepository.findOne({ where: { tgId }, relations: { voices: true, chats: true } });
     }
 
-    createFromTgProfile(tgId: number, tgFirstName: string, tgUsername?: string): Promise<UserEntity> {
-        return this.userRepository.save(this.userRepository.create({ tgId, tgFirstName, tgUsername }));
+    createFromTgProfile(tgId: number, tgFirstName: string, isBot: boolean, tgUsername?: string): Promise<UserEntity> {
+        return this.userRepository.save(this.userRepository.create({ tgId, tgFirstName, tgUsername, isBot }));
     }
 
     findById(id: number) {

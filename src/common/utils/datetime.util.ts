@@ -29,7 +29,7 @@ function parseSecondsIntoTimeString(seconds: number) {
     const hDisplay = h > 0 ? h + parseAmountInString(h, { one: 'час', second: 'часа', many: 'часов' }) : '';
     const mDisplay = m > 0 ? m + parseAmountInString(m, { one: 'минута', second: 'минуты', many: 'минут' }) : '';
     const sDisplay = s > 0 ? s + parseAmountInString(s, { one: 'секунда', second: 'секунды', many: 'секунд' }) : '';
-    return `${dDisplay} ${hDisplay} ${mDisplay} ${sDisplay}`;
+    return `${dDisplay} ${hDisplay} ${mDisplay} ${sDisplay}`.trim();
 }
 
 function parseAmountInString(amount: number, aliases: { one: string; second: string; many: string }) {

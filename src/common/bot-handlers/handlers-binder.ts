@@ -1,349 +1,75 @@
-import { Bot, Context } from 'grammy';
-import UserService from '../../user/services/user.service';
-import Db from '../db/db';
-import UserEntity from '../../user/entities/user.entity';
+import { Bot } from 'grammy';
 import { BotCommandsEnum } from '../enum/bot-commands.enum';
-import { VoiceSenderAliasByCount } from '../enum/voice-sender-alias-by-count.enum';
-import { photoReactions } from '../list/photo-reactions.list';
-import VoiceService from '../../voice/services/voice.service';
-import ChatService from '../../chat/services/chat.service';
-import VoiceEntity from '../../voice/entities/user-voice.entity';
-import ChatEntity from '../../chat/entities/chat.entity';
-import MessageService from '../../message/services/message.service';
-import MessageEntity from '../../message/entities/message.entity';
-import datetimeUtil from '../utils/datetime.util';
-import { RedisClientType } from 'redis';
-import PhraseService from '../../phrase/phrase.service';
+import PhraseOnPhotoBotHandler from './photo/phrase-on-photo.handler';
+import UserMiddleware from '../middleware/bot/user.middleware';
+import { CustomContext } from '../types/custom-context.type';
+import BotOutDatedMessageMiddleware from '../middleware/bot/outdated-message.middleware';
+import BotMessageProcessMiddleware from '../middleware/bot/message-process.middleware';
+import VoiceMessageBotHandler from './voice/voice-message.handler';
+import TopVoicesCommandHandler from './voice/top-voices.handler';
+import TodayTopVoicesCommandHandler from './voice/today-top-voices.handler';
+import OwnVoicesLengthCommandHandler from './voice/own-voices-length.handler';
+import OwnMessagesCountCommandHandler from './message/own-messages-count.handler';
+import ChatTopMessagesCommandHandler from './message/chat-top-messages.handler';
+import GenerateRandomSentenceBotHandler from './message/generate-random-sentence.handler';
 
 export default class BotHandlersBinder {
-    private COMMANDS: Map<BotCommandsEnum, (ctx: Context, user: UserEntity) => Promise<void>> = new Map([
-        [BotCommandsEnum.OWN_VOICES_LENGTH, this.getOwnVoicesLength],
-        [BotCommandsEnum.TOP_VOICES, this.getTopVoicesLength],
-        [BotCommandsEnum.TOP_VOICES_TODAY, this.getTopVoicesLengthToday],
-        [BotCommandsEnum.COUNT_MESSAGES, this.getUserMessagesCount],
-        [BotCommandsEnum.TOP_MESSAGES, this.countMessagesByChat],
-    ]);
-
-    private userService: UserService;
-    private voiceService: VoiceService;
-    private chatService: ChatService;
-    private messageService: MessageService;
-    private phraseService: PhraseService;
-
-    constructor(
-        private readonly _bot: Bot,
-        private readonly redisClient: RedisClientType,
-    ) {
-        const ds = Db.getDataSource();
-        this.userService = new UserService(ds.getRepository(UserEntity));
-        this.voiceService = new VoiceService(ds.getRepository(VoiceEntity));
-        this.chatService = new ChatService(ds.getRepository(ChatEntity));
-        this.messageService = new MessageService(ds.getRepository(MessageEntity));
-        this.phraseService = new PhraseService(this.redisClient);
-    }
+    constructor(private readonly _bot: Bot<CustomContext>) {}
 
     async bind() {
+        const userMiddleware = new UserMiddleware();
+        const outDatedMessagesMiddleware = new BotOutDatedMessageMiddleware();
+        const messageMiddleware = new BotMessageProcessMiddleware();
+
+        this._bot.use(userMiddleware.middleware.bind(userMiddleware));
+        this._bot.use(outDatedMessagesMiddleware.middleware.bind(outDatedMessagesMiddleware));
+        this._bot.use(messageMiddleware.middleware.bind(messageMiddleware));
+
+        this._bot.on(':photo', (ctx) => new PhraseOnPhotoBotHandler().process(ctx));
+        this._bot.on([':voice', ':video_note'], async (ctx) => {
+            await new VoiceMessageBotHandler().process(ctx);
+        });
+
+        this._bot.command(BotCommandsEnum.TOP_VOICES, async (ctx) => await new TopVoicesCommandHandler().process(ctx));
+        this._bot.command(
+            BotCommandsEnum.TOP_VOICES_TODAY,
+            async (ctx) => await new TodayTopVoicesCommandHandler().process(ctx),
+        );
+        this._bot.command(
+            BotCommandsEnum.OWN_VOICES_LENGTH,
+            async (ctx) => await new OwnVoicesLengthCommandHandler().process(ctx),
+        );
+        this._bot.command(
+            BotCommandsEnum.COUNT_MESSAGES,
+            async (ctx) => await new OwnMessagesCountCommandHandler().process(ctx),
+        );
+        this._bot.command(
+            BotCommandsEnum.TOP_MESSAGES,
+            async (ctx) => await new ChatTopMessagesCommandHandler().process(ctx),
+        );
+
+        this._bot.hears(/шиз/gi, async (ctx) => await new GenerateRandomSentenceBotHandler().process(ctx));
+        this._bot.hears(/темка/gi, async (ctx) => {
+            if (!ctx.message) {
+                throw new Error('Invalid message');
+            }
+            await ctx.reply('Куда ты лезешь, оно тебя сожрет', {
+                reply_parameters: { message_id: ctx.message.message_id },
+            });
+        });
+
         this._bot.on('message', async (ctx) => {
-            if (ctx.from.is_bot) {
-                return;
+            if (ctx.isOutDatedMessage) {
+                throw new Error('Outdated message');
             }
-            const user = await this.handleTelegramUser(ctx);
-            await this.addMessageIntoDb(ctx, user);
-            await this.handlerPhrases(ctx);
-            await this.handlePhoto(ctx);
-            await this.handleVoice(ctx, user);
-            await this.handleCommands(ctx, user);
-            await this.generateRandomSentence(ctx);
-            console.log('Message\n', JSON.stringify(ctx));
+            const GENERATION_CHANCE = 5;
+            const chance = Math.floor(Math.random() * 100);
+
+            if (chance <= GENERATION_CHANCE) {
+                await new GenerateRandomSentenceBotHandler().process(ctx);
+            }
         });
-    }
 
-    async handleTelegramUser(ctx: Context): Promise<UserEntity> {
-        if (!ctx.from) {
-            throw new Error('Cannot determine from props');
-        }
-        if (!ctx.chat) {
-            throw new Error('Cannot determine chat id');
-        }
-        let user = await this.userService.findOneByTgId(ctx.from.id);
-        if (!user) {
-            user = await this.userService.createFromTgProfile(ctx.from.id, ctx.from.first_name, ctx.from.username);
-        }
-        if (!user.chats || !user.chats.find((chat) => chat.chatId === ctx.chat?.id)) {
-            const chat = await this.chatService.create(ctx.chat.id, ctx.chat.title, ctx.chat.type === 'private', user);
-            if (!user.chats) {
-                user.chats = [];
-            }
-            user.chats.push(chat);
-        }
-        return user;
-    }
-
-    async handlePhoto(ctx: Context) {
-        if (!ctx.message || !ctx.message.photo) {
-            return;
-        }
-        const index = Math.floor(Math.random() * photoReactions.length);
-        ctx.reply(photoReactions[index], { reply_parameters: { message_id: ctx.message.message_id } });
-    }
-
-    async handlerPhrases(ctx: Context) {
-        if (!ctx.message || !ctx.chat?.id) {
-            return;
-        }
-        if (ctx.message.text && /темка/gi.test(ctx.message.text)) {
-            ctx.reply('Куда ты лезешь, оно тебя сожрет', { reply_parameters: { message_id: ctx.message.message_id } });
-        }
-
-        if (ctx.message.text && /токсик/gi.test(ctx.message.text)) {
-            this._bot.api.sendMessage(ctx.chat.id, `/voteban @${ctx.from?.username}`);
-        }
-
-        if (ctx.message.text && /шиз/gi.test(ctx.message.text)) {
-            const response = await this.phraseService.getRandomSentence();
-            if (response) {
-                await ctx.reply(response, { reply_parameters: { message_id: ctx.message.message_id } });
-            }
-        }
-    }
-
-    async handleVoice(ctx: Context, user: UserEntity) {
-        if (!ctx.message || !ctx.chat) {
-            return;
-        }
-        if (!ctx.message.video_note && !ctx.message.voice) {
-            return;
-        }
-        let duration, fileId, fileUniqueId, fileSize;
-        if (ctx.message.video_note) {
-            duration = ctx.message.video_note.duration;
-            fileId = ctx.message.video_note.thumbnail?.file_id;
-            fileUniqueId = ctx.message.video_note.thumbnail?.file_unique_id;
-            fileSize = ctx.message.video_note.thumbnail?.file_size;
-        } else {
-            duration = ctx.message.voice?.duration;
-            fileId = ctx.message.voice?.file_id;
-            fileUniqueId = ctx.message.voice?.file_unique_id;
-            fileSize = ctx.message.voice?.file_size;
-        }
-
-        const chatId = user.chats.find((chat) => chat.chatId === ctx.chat?.id)?.id;
-        if (!chatId) {
-            throw new Error();
-        }
-        if (duration === undefined || fileId === undefined || fileUniqueId === undefined) {
-            return;
-        }
-
-        await this.voiceService.create(duration, fileId, fileUniqueId, fileSize, user, chatId);
-        const totalVoices = await this.voiceService.getUserVoicesCount(user, ctx.chat.id);
-        const now = new Date();
-        const start = new Date(`${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`);
-        const end = new Date(start);
-        end.setHours(23);
-        end.setMinutes(59);
-        end.setSeconds(59);
-        const todaysVoices = await this.voiceService.getUserVoicesCount(user, ctx.chat.id, { start, end });
-
-        let voicesAlias = null;
-
-        for (const key in VoiceSenderAliasByCount) {
-            const number = VoiceSenderAliasByCount[key];
-            if (totalVoices > number) {
-                voicesAlias = key;
-            }
-        }
-
-        ctx.reply(
-            `Ваше общее количество голосовых сообщений: ${totalVoices}\n\nВы ${voicesAlias}\n\nСегодня вы отправили ${todaysVoices}, это ${Math.round((todaysVoices / totalVoices) * 100)}% от общего числа`,
-            { reply_parameters: { message_id: ctx.message.message_id } },
-        );
-    }
-
-    async handleCommands(ctx: Context, user: UserEntity) {
-        if (!ctx.message || !ctx.message.text) {
-            return;
-        }
-        const handler = this.COMMANDS.get(ctx.message.text as BotCommandsEnum)?.bind(this);
-        if (handler) {
-            await handler(ctx, user);
-        } else {
-            const groupHandler = this.COMMANDS.get(ctx.message.text.split('@')[0] as BotCommandsEnum)?.bind(this);
-            if (groupHandler) {
-                await groupHandler(ctx, user);
-            }
-        }
-    }
-
-    async getOwnVoicesLength(ctx: Context, user: UserEntity) {
-        if (!ctx.chat || !ctx.message) {
-            return;
-        }
-        const now = new Date();
-        const start = new Date(`${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`);
-        const end = new Date(start);
-        end.setHours(23);
-        end.setMinutes(59);
-        end.setSeconds(59);
-
-        const totalUserVoicesLength = await this.voiceService.getUsersVoicesLength(user, ctx.chat.id);
-        const todayUserVoicesLength = await this.voiceService.getUsersVoicesLength(user, ctx.chat.id, { start, end });
-
-        const totalChatVoicesLength = await this.voiceService.getChatTotalVoicesDuration(ctx.chat.id);
-
-        const totalDurationMessage = `Общеем время голосовых сообщений: ${datetimeUtil.parseSecondsIntoTimeString(totalUserVoicesLength)}`;
-        const todayDurationMessage = `Длительность голосовых сообщений за сегодня: ${todayUserVoicesLength}`;
-
-        const partOfTotal = `Процент всех гс от общей длительности по чату: ${Math.round((totalUserVoicesLength / totalChatVoicesLength) * 100)}`;
-
-        const message = `${totalDurationMessage}\n${todayDurationMessage}\n\n${totalChatVoicesLength ? partOfTotal : ''}`;
-
-        ctx.reply(message, {
-            reply_parameters: { message_id: ctx.message.message_id },
-        });
-    }
-
-    async getTopVoicesLengthToday(ctx: Context, user: UserEntity) {
-        if (!ctx.chat) {
-            return;
-        }
-        const now = new Date();
-        const start = new Date(`${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`);
-        const end = new Date(start);
-        end.setHours(23);
-        end.setMinutes(59);
-        end.setSeconds(59);
-        const top = await this.voiceService.getTopVoicesLengthByChat(ctx.chat.id, { start, end });
-        if (top.size === 0) {
-            this._bot.api.sendMessage(ctx.chat.id, 'Еще нет ни одного зарегистрированного голосовного сообщения');
-        }
-        const promises: Promise<UserEntity | null>[] = [];
-        top.forEach((_, key) => {
-            promises.push(this.userService.findById(key));
-        });
-        const message = `Топ воис абьюзеров за сегодня:\n`;
-        const users = await Promise.all(promises);
-
-        this._bot.api.sendMessage(
-            ctx.chat.id,
-            users.reduce((acc, user) => {
-                if (!user) {
-                    return acc;
-                }
-                const length = top.get(user.id);
-                return `${acc}<a href="t.me/${user.tgUsername}">${user.tgFirstName}</a> - ${length ? datetimeUtil.parseSecondsIntoTimeString(length) : 0}\n`;
-            }, message),
-            { parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
-        );
-    }
-
-    async getTopVoicesLength(ctx: Context, user: UserEntity) {
-        if (!ctx.chat) {
-            return;
-        }
-        const topTotal = await this.voiceService.getTopVoicesLengthByChat(ctx.chat.id);
-        if (topTotal.size === 0) {
-            await this._bot.api.sendMessage(ctx.chat.id, 'Еще нет ни одного зарегистрированного голосовного сообщения');
-            return;
-        }
-        const promises: Promise<UserEntity | null>[] = [];
-        topTotal.forEach((_, key) => {
-            promises.push(this.userService.findById(key));
-        });
-        const message = `Топ воис абьюзеров:\n`;
-        const users = await Promise.all(promises);
-
-        await this._bot.api.sendMessage(
-            ctx.chat.id,
-            users.reduce((acc, user) => {
-                if (!user) {
-                    return acc;
-                }
-                const length = topTotal.get(user.id);
-                return `${acc}<a href="t.me/${user.tgUsername}">${user.tgFirstName}</a> - ${length ? datetimeUtil.parseSecondsIntoTimeString(length) : 0}\n`;
-            }, message),
-            { parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
-        );
-    }
-
-    async getUserMessagesCount(ctx: Context, user: UserEntity) {
-        if (!ctx.chat || !ctx.message) {
-            return;
-        }
-        let chat = user.chats.find((_chat) => _chat.chatId === ctx.chat?.id);
-        if (!chat) {
-            const isChatExists = await this.chatService.getChatByTelegramId(ctx.chat.id);
-            if (!isChatExists) {
-                return;
-            }
-            chat = isChatExists;
-        }
-        let messagesToday = await this.messageService.getMessageByChat(chat, new Date());
-        if (!messagesToday) {
-            messagesToday = await this.messageService.create(chat, new Date());
-        }
-        const totalMessages = await this.messageService.getTotalMessagesCountByChat(chat);
-        const response = `Общее количество сообщений: ${totalMessages}\nСообщений за сегодня: ${messagesToday.messagesCount}`;
-        ctx.reply(response, { reply_parameters: { message_id: ctx.message?.message_id } });
-    }
-
-    async addMessageIntoDb(ctx: Context, user: UserEntity) {
-        if (!ctx.chat) {
-            return;
-        }
-        let chat = user.chats.find((_chat) => _chat.chatId === ctx.chat?.id);
-        if (!chat) {
-            const isChatExists = await this.chatService.getChatByTelegramId(ctx.chat.id);
-            if (!isChatExists) {
-                return;
-            }
-            chat = isChatExists;
-        }
-        let message = await this.messageService.getMessageByChat(chat, new Date());
-        if (!message) {
-            message = await this.messageService.create(chat, new Date());
-        }
-        await this.messageService.increaseMessageCounter(message);
-    }
-
-    async countMessagesByChat(ctx: Context, user: UserEntity) {
-        if (!ctx.chat) {
-            return;
-        }
-        const top = await this.messageService.countMessagesByTgChat(ctx.chat.id);
-        const message = `Топ спамеров:\n`;
-        this._bot.api.sendMessage(
-            ctx.chat.id,
-            top.reduce((acc, curr) => {
-                if (!curr) {
-                    return acc;
-                }
-                return `${acc}<a href="t.me/${curr.username}">${curr.firstName}</a> - ${curr.amount || 0} сообщений\n`;
-            }, message),
-            { parse_mode: 'HTML', link_preview_options: { is_disabled: true } },
-        );
-    }
-
-    async generateRandomSentence(ctx: Context) {
-        const GENERATION_CHANCE = 10;
-        if (!ctx.message || !ctx.message.text) {
-            return;
-        }
-        const words = await this.phraseService.handleMessage(ctx.message.text);
-        const chance = Math.floor(Math.random() * 100);
-
-        if (chance <= GENERATION_CHANCE) {
-            const initialWordIndex = Math.floor(Math.random() * (words.length - 1));
-            let sequence2Search = words[initialWordIndex];
-            if (words.length > 1) {
-                if (initialWordIndex === words.length - 1) {
-                    sequence2Search = `${words[initialWordIndex - 1]} ${sequence2Search}`;
-                } else {
-                    sequence2Search += ` ${words[initialWordIndex + 1]}`;
-                }
-            }
-            const phrase = await this.phraseService.generateSentence(sequence2Search);
-            await ctx.reply(phrase, { reply_parameters: { message_id: ctx.message.message_id } });
-        }
+        this._bot.catch(console.log);
     }
 }

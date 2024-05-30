@@ -6,10 +6,10 @@ export default class PhraseService {
     constructor(private readonly client: RedisClientType) {}
 
     // @TODO добавить мультиязычность + проверить регулярку
-    private extractWords(message: string): string[] {
+    extractWords(message: string): string[] {
         return message
             .toLowerCase()
-            .replace(/[^a-zа-яё\s]/gi, '')
+            .replace(/[^а-яё\s]/gi, '')
             .split(/\s+/);
     }
 
@@ -65,7 +65,7 @@ export default class PhraseService {
 
     async handleMessage(message: string) {
         const words = this.extractWords(message);
-        if (words.length >= 2) {
+        if (words.length >= 3) {
             await this.updateSequences(words);
         }
         return words;
