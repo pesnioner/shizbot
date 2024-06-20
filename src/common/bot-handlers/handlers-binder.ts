@@ -62,7 +62,7 @@ export default class BotHandlersBinder {
             if (ctx.isOutDatedMessage) {
                 throw new Error('Outdated message');
             }
-            const GENERATION_CHANCE = 5;
+            const GENERATION_CHANCE = 1;
             const chance = Math.floor(Math.random() * 100);
 
             if (chance <= GENERATION_CHANCE) {
