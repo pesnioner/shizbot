@@ -6,16 +6,20 @@ import BotHandlersBinder from './common/bot-handlers/handlers-binder';
 import { BotCommandsEnum } from './common/enum/bot-commands.enum';
 import Redis from './common/db/redis/redis';
 import { CustomContext } from './common/types/custom-context.type';
+import { RedisConnectionEnum } from './common/enum/redis-connection.enum';
 
 dotenv.config();
 
 const bot = new Bot<CustomContext>(envUtil.extractString('BOT_TOKEN'));
 
 const ds = Db.getDataSource();
-const redisCLient = Redis.getRedisConnection();
+const redisCLient = Redis.getRedisConnection(RedisConnectionEnum.SENTENCE_SEQUENCES);
+const mediaRedisClient = Redis.getRedisConnection(RedisConnectionEnum.MEDIA_GROUPS);
 ds.initialize()
     .then(() => redisCLient.connect())
     .then(() => redisCLient.ping())
+    .then(() => mediaRedisClient.connect())
+    .then(() => mediaRedisClient.ping())
     .then((data) => console.log(data))
     .then(() => bot.api.getMyCommands())
     .then((commands) => {

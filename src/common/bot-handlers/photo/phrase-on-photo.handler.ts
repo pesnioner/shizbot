@@ -1,3 +1,5 @@
+import Redis from '../../db/redis/redis';
+import { RedisConnectionEnum } from '../../enum/redis-connection.enum';
 import IBotHandler from '../../interfaces/bot-handler.interface';
 import { photoReactions } from '../../list/photo-reactions.list';
 import { CustomContext } from '../../types/custom-context.type';
@@ -15,7 +17,18 @@ export default class PhraseOnPhotoBotHandler implements IBotHandler {
             throw new Error('Message is out dated');
         }
 
-        const index = Math.floor(Math.random() * photoReactions.length);
-        await ctx.reply(photoReactions[index], { reply_parameters: { message_id: ctx.message.message_id } });
+        const redisClient = Redis.getRedisConnection(RedisConnectionEnum.MEDIA_GROUPS);
+
+        const isMediaGroupExists = ctx.message.media_group_id && (await redisClient.get(ctx.message.media_group_id));
+
+        if (!isMediaGroupExists) {
+            const index = Math.floor(Math.random() * photoReactions.length);
+            await ctx.reply(photoReactions[index], {
+                reply_parameters: { message_id: ctx.message.message_id },
+            });
+            if (ctx.message.media_group_id) {
+                await redisClient.set(ctx.message.media_group_id, new Date().toISOString());
+            }
+        }
     }
 }

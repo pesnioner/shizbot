@@ -1,5 +1,6 @@
 import PhraseService from '../../../phrase/phrase.service';
 import Redis from '../../db/redis/redis';
+import { RedisConnectionEnum } from '../../enum/redis-connection.enum';
 import IBotHandler from '../../interfaces/bot-handler.interface';
 import { CustomContext } from '../../types/custom-context.type';
 
@@ -7,7 +8,7 @@ export default class GenerateRandomSentenceBotHandler implements IBotHandler {
     private readonly phraseService: PhraseService;
 
     constructor() {
-        this.phraseService = new PhraseService(Redis.getRedisConnection());
+        this.phraseService = new PhraseService(Redis.getRedisConnection(RedisConnectionEnum.SENTENCE_SEQUENCES));
     }
 
     async process(ctx: CustomContext): Promise<void> {

@@ -8,6 +8,7 @@ import IBotMiddleware from '../../interfaces/bot-middleware.interface';
 import { CustomContext } from '../../types/custom-context.type';
 import PhraseService from '../../../phrase/phrase.service';
 import Redis from '../../db/redis/redis';
+import { RedisConnectionEnum } from '../../enum/redis-connection.enum';
 
 export default class BotMessageProcessMiddleware implements IBotMiddleware {
     private messageService: MessageService;
@@ -18,7 +19,7 @@ export default class BotMessageProcessMiddleware implements IBotMiddleware {
         const ds = Db.getDataSource();
         this.messageService = new MessageService(ds.getRepository(MessageEntity));
         this.chatService = new ChatService(ds.getRepository(ChatEntity));
-        this.phraseMessage = new PhraseService(Redis.getRedisConnection());
+        this.phraseMessage = new PhraseService(Redis.getRedisConnection(RedisConnectionEnum.SENTENCE_SEQUENCES));
     }
 
     async middleware(ctx: CustomContext, next: NextFunction) {
