@@ -7,6 +7,7 @@ enum VoiceSenderAliasByCount {
     'Балабол' = 30,
     'Воис дудосер' = 40,
     'Владос, заебал, пиши руками' = 50,
+    'Невьебенный пидорас' = 100,
 }
 
 export { VoiceSenderAliasByCount };

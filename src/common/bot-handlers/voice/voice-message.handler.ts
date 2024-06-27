@@ -66,13 +66,13 @@ export default class VoiceMessageBotHandler implements IBotHandler {
 
         for (const key in VoiceSenderAliasByCount) {
             const number = VoiceSenderAliasByCount[key];
-            if (totalVoices > number) {
+            if (todaysVoices > number) {
                 voicesAlias = key;
             }
         }
 
         await ctx.reply(
-            `Ваше общее количество голосовых сообщений: ${totalVoices}\n\nВы ${voicesAlias}\n\nСегодня вы отправили ${todaysVoices}, это ${Math.round((todaysVoices / totalVoices) * 100)}% от общего числа`,
+            `Ваше общее количество голосовых сообщений: ${totalVoices}\n\nСегодня вы отправили ${todaysVoices}, это ${((todaysVoices / totalVoices) * 100).toFixed(2)}% от общего числа\n\nВы ${voicesAlias}\n\n`,
             { reply_parameters: { message_id: ctx.message.message_id } },
         );
     }
