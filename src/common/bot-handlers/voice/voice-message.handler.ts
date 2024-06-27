@@ -21,6 +21,13 @@ export default class VoiceMessageBotHandler implements IBotHandler {
             throw new Error('Voice handler without chat properties');
         }
 
+        if (ctx.message.forward_origin) {
+            await ctx.reply(`А ваша мама знает что вы пересылаете сообщения???`, {
+                reply_parameters: { message_id: ctx.message.message_id },
+            });
+            throw new Error('Forwared voice message');
+        }
+
         let duration, fileId, fileUniqueId, fileSize;
         if (ctx.message.video_note) {
             duration = ctx.message.video_note.duration;
