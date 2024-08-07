@@ -58,18 +58,6 @@ export default class BotHandlersBinder {
             });
         });
 
-        this._bot.on('message', async (ctx) => {
-            if (ctx.isOutDatedMessage) {
-                throw new Error('Outdated message');
-            }
-            const GENERATION_CHANCE = 1;
-            const chance = Math.floor(Math.random() * 100);
-
-            if (chance <= GENERATION_CHANCE) {
-                await new GenerateRandomSentenceBotHandler().process(ctx);
-            }
-        });
-
         this._bot.catch(console.log);
     }
 }
